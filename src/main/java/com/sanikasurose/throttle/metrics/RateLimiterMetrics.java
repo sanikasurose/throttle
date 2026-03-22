@@ -1,9 +1,11 @@
-package com.sanikasurose.throttle.core;
+package com.sanikasurose.throttle.metrics;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+
+import com.sanikasurose.throttle.core.RateLimiter;
 
 /**
  * Thread-safe metrics collector for a {@link RateLimiter}.
