@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: temurin   # Eclipse Temurin — same JDK used in the Dockerfile
+          cache: maven            # Caches ~/.m2/repository keyed on pom.xml hash
+
+      - name: Run tests
+        run: mvn test -B           # -B = batch mode: no colour codes, cleaner CI logs
+
+      - name: Build jar
+        run: mvn package -DskipTests -B   # Tests already ran above; skip to avoid running twice
