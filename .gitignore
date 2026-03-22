@@ -1,0 +1,22 @@
+# Build output
+target/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# VS Code / Cursor
+.vscode/
+
+# Mac
+.DS_Store
+
+# Environment variables (never commit secrets)
+.env
+*.env
+
+# Logs
+*.log
+logs/
