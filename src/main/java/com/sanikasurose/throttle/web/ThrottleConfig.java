@@ -8,6 +8,7 @@ import com.sanikasurose.throttle.metrics.RateLimiterMetrics;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.core.RedisTemplate;
 
 /**
  * Spring configuration that wires all Throttle core objects into the
@@ -39,12 +40,15 @@ public class ThrottleConfig {
     }
 
     /**
-     * Creates the {@link RateLimiter} singleton, injecting the clock and policy beans.
-     * Spring resolves the two parameters by type from the context.
+     * Creates the {@link RateLimiter} singleton, injecting the clock, policy, and Redis
+     * template beans. Spring Boot auto-configures a {@code StringRedisTemplate}
+     * (a {@code RedisTemplate<String, String>}) when {@code spring-boot-starter-data-redis}
+     * is on the classpath; Spring resolves all three parameters by type.
      */
     @Bean
-    public RateLimiter rateLimiter(Clock clock, RateLimitPolicy policy) {
-        return new RateLimiter(clock, policy);
+    public RateLimiter rateLimiter(Clock clock, RateLimitPolicy policy,
+                                   RedisTemplate<String, String> redisTemplate) {
+        return new RateLimiter(clock, policy, redisTemplate);
     }
 
     /**
