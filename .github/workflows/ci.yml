@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
-  pull_request:
+  pull_request:d
     branches: [main]
 
 jobs:
@@ -22,7 +22,23 @@ jobs:
           cache: maven            # Caches ~/.m2/repository keyed on pom.xml hash
 
       - name: Run tests
-        run: mvn test -B           # -B = batch mode: no colour codes, cleaner CI logs
+        run: mvn verify -P coverage -B   # verify runs through the full lifecycle so JaCoCo's
+                                         # report goal (bound to verify phase) actually executes
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: target/site/jacoco/jacoco.xml
+
+      - name: SonarCloud scan
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: mvn sonar:sonar -B 
+        -Dsonar.projectKey=sanikasurose_throttle 
+        -Dsonar.organization=sanikasurose 
+        -Dsonar.host.url=https://sonarcloud.io 
 
       - name: Build jar
         run: mvn package -DskipTests -B   # Tests already ran above; skip to avoid running twice
