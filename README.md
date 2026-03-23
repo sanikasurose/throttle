@@ -1,37 +1,57 @@
 # Throttle
 
-A production-grade API rate limiting service built in Java 17 and Spring Boot.
-Throttle enforces per-user request quotas using a sliding window algorithm,
-with Redis as a distributed backing store and a real-time metrics endpoint.
+![CI](https://github.com/sanikasurose/throttle/actions/workflows/ci.yml/badge.svg)
+![Java](https://img.shields.io/badge/Java-17-blue)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.12-green)
+![Redis](https://img.shields.io/badge/Redis-7-red)
 
-## Tech Stack
+A production-grade API rate limiting service built in Java 17 and 
+Spring Boot. Throttle enforces per-user request quotas using a sliding 
+window algorithm backed by Redis, with atomic Lua script execution and 
+a real-time metrics endpoint.
 
-Java 17 · Spring Boot 3.2 · Redis · Docker · JUnit 5 · Maven
+## Tech stack
+
+Java 17 · Spring Boot 3.5.12 · Redis 7 · Docker · JUnit 5 · Maven
 
 ## How it works
 
-Each incoming request carries a user ID header. Throttle checks whether that
-user has exceeded their configured request quota within the current time window.
-If yes, it returns HTTP 429 Too Many Requests. If no, it allows the request
-through and records the timestamp.
+Each incoming request carries a `X-User-Id` header. Throttle checks 
+whether that user has exceeded their configured request quota within 
+the current sliding window. If yes, it returns HTTP 429. If no, it 
+allows the request and records the timestamp atomically in Redis.
 
-The sliding window algorithm prevents the boundary exploit present in fixed
-window implementations — quotas are always calculated relative to the current
-moment, not a fixed reset time.
+The sliding window algorithm prevents the boundary exploit present in 
+fixed window implementations. The evict → count → add sequence runs 
+as a single Lua script on Redis, making it safe under concurrent load 
+and across multiple service instances.
 
 ## Running locally
 
 **Prerequisites:** Java 17, Docker Desktop
 ```bash
-# Start Redis
-docker compose up redis
+# Start Redis and the app together
+docker compose up --build
 
-# Run the app
+# Or run just Redis and use Maven for the app (faster for development)
+docker compose up redis -d
 ./mvnw spring-boot:run
 ```
 
 The API is available at `http://localhost:8080`.
-Send requests with an `X-User-Id` header to test rate limiting.
+
+## Testing the rate limiter
+```bash
+# Fire 7 requests — first 5 return 200, last 2 return 429
+for i in {1..7}; do
+  curl -s -o /dev/null -w "%{http_code}\n" \
+    -H "X-User-Id: sanika" \
+    http://localhost:8080/ping
+done
+
+# Check per-user metrics
+curl http://localhost:8080/metrics
+```
 
 ## Endpoints
 
@@ -43,20 +63,27 @@ Send requests with an `X-User-Id` header to test rate limiting.
 
 ## Running tests
 ```bash
-./mvnw test
+mvn test
 ```
 
 ## Project structure
 ```
 src/main/java/com/sanikasurose/throttle/
 ├── core/        # Rate limiting logic — no Spring dependencies
+│   ├── Clock.java
+│   ├── SystemClock.java
+│   ├── RateLimitPolicy.java
+│   ├── RequestRecord.java
+│   └── RateLimiter.java
 ├── metrics/     # Per-user stats tracking
+│   └── RateLimiterMetrics.java
 └── web/         # Spring filter and REST controllers
+    ├── ThrottleConfig.java
+    ├── RateLimitFilter.java
+    └── MetricsController.java
 ```
 
 ## Design decisions
 
-- **Sliding window** over fixed window — prevents burst exploitation at window boundaries
-- **Per-record locking** over global lock — users never block each other
-- **Clock interface** injected for deterministic, sleep-free unit tests
-- **Redis backing store** enables horizontal scaling across multiple instances
+See [DESIGN.md](docs/DESIGN.md) for full reasoning behind every 
+architectural decision.
