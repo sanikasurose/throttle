@@ -5,14 +5,79 @@
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.12-green)
 ![Redis](https://img.shields.io/badge/Redis-7-red)
 
-A production-grade API rate limiting service built in Java 17 and 
-Spring Boot. Throttle enforces per-user request quotas using a sliding 
-window algorithm backed by Redis, with atomic Lua script execution and 
-a real-time metrics endpoint.
+Production-grade API rate limiting service built with Java 17 and Spring Boot.
+Throttle enforces per-user request quotas using a **sliding window** algorithm
+backed by **Redis**, with atomic **Lua script** execution and a lightweight
+**per-user metrics** endpoint.
+
+## Features
+
+- Sliding-window throttling (avoids fixed-window boundary exploits)
+- Redis-backed and safe under concurrency (atomic Lua script per request)
+- Header-based identity via `X-User-Id`
+- `/metrics` endpoint with per-user allow/reject counters
+- Docker Compose for local development (Redis + service)
+- Spring Boot Actuator health endpoint
 
 ## Tech stack
 
-Java 17 · Spring Boot 3.5.12 · Redis 7 · Docker · JUnit 5 · Maven
+Java 17 · Spring Boot 3.5.12 · Redis 7 · Docker · Maven · JUnit 5
+
+## Installation
+
+**Prerequisites:** Java 17 and Docker Desktop (for Redis)
+
+```bash
+# Clone
+git clone https://github.com/sanikasurose/throttle.git
+cd throttle
+
+# Build
+./mvnw clean package
+```
+
+## Usage
+
+### Run locally
+
+```bash
+# Start Redis and the app together
+docker compose up --build
+
+# Or: run Redis only and start the app with Maven (faster for development)
+docker compose up redis -d
+./mvnw spring-boot:run
+```
+
+The API is available at `http://localhost:8080`.
+
+### Try the rate limiter
+
+```bash
+# Fire 7 requests — first 5 return 200, last 2 return 429 (default policy)
+for i in {1..7}; do
+  curl -s -o /dev/null -w "%{http_code}\n" \
+    -H "X-User-Id: sanika" \
+    http://localhost:8080/ping
+done
+
+# Per-user metrics snapshot
+curl http://localhost:8080/metrics
+```
+
+## Configuration
+
+- **User identity:** every request must include the `X-User-Id` header (missing/blank → `400`).
+- **Default policy:** `5` requests per `10` seconds (configured in `ThrottleConfig.rateLimitPolicy()`).
+- **Redis connection:** set `SPRING_DATA_REDIS_HOST` / `SPRING_DATA_REDIS_PORT` (see `src/main/resources/application.properties`).
+
+## Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/ping` | Liveness endpoint (rate-limited) |
+| GET | `/metrics` | Per-user request + rejection counters (not rate-limited) |
+| GET | `/actuator/health` | Service health check |
 
 ## How it works
 
@@ -26,44 +91,9 @@ fixed window implementations. The evict → count → add sequence runs
 as a single Lua script on Redis, making it safe under concurrent load 
 and across multiple service instances.
 
-## Running locally
-
-**Prerequisites:** Java 17, Docker Desktop
-```bash
-# Start Redis and the app together
-docker compose up --build
-
-# Or run just Redis and use Maven for the app (faster for development)
-docker compose up redis -d
-./mvnw spring-boot:run
-```
-
-The API is available at `http://localhost:8080`.
-
-## Testing the rate limiter
-```bash
-# Fire 7 requests — first 5 return 200, last 2 return 429
-for i in {1..7}; do
-  curl -s -o /dev/null -w "%{http_code}\n" \
-    -H "X-User-Id: sanika" \
-    http://localhost:8080/ping
-done
-
-# Check per-user metrics
-curl http://localhost:8080/metrics
-```
-
-## Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/ping` | Test endpoint — returns 200 or 429 |
-| GET | `/metrics` | Per-user request and rejection stats |
-| GET | `/actuator/health` | Service health check |
-
 ## Running tests
 ```bash
-mvn test
+./mvnw test
 ```
 
 ## Project structure
@@ -87,3 +117,7 @@ src/main/java/com/sanikasurose/throttle/
 
 See [DESIGN.md](docs/DESIGN.md) for full reasoning behind every 
 architectural decision.
+
+## License
+
+No license file is currently included in this repository.
