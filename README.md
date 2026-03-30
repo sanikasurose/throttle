@@ -4,6 +4,8 @@
 ![Java](https://img.shields.io/badge/Java-17-blue)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.12-green)
 ![Redis](https://img.shields.io/badge/Redis-7-red)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=sanikasurose_throttle&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=sanikasurose_throttle)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=sanikasurose_throttle&metric=coverage)](https://sonarcloud.io/summary/new_code?id=sanikasurose_throttle)
 
 Production-grade API rate limiting service built with Java 17 and Spring Boot.
 Throttle enforces per-user request quotas using a **sliding window** algorithm
